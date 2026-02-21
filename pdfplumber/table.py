@@ -1,7 +1,7 @@
 import itertools
 from dataclasses import dataclass
 from operator import itemgetter
-from typing import TYPE_CHECKING, Any, Dict, List, Optional, Set, Tuple, Type, Union
+from typing import TYPE_CHECKING, Any, Union
 
 from . import utils
 from ._typing import T_bbox, T_num, T_obj, T_obj_iter, T_obj_list, T_point
@@ -11,8 +11,8 @@ DEFAULT_JOIN_TOLERANCE = 3
 DEFAULT_MIN_WORDS_VERTICAL = 3
 DEFAULT_MIN_WORDS_HORIZONTAL = 1
 
-T_intersections = Dict[T_point, Dict[str, T_obj_list]]
-T_table_settings = Union["TableSettings", Dict[str, Any]]
+T_intersections = dict[T_point, dict[str, T_obj_list]]
+T_table_settings = Union["TableSettings", dict[str, Any]]
 
 if TYPE_CHECKING:  # pragma: nocover
     from .page import Page
@@ -27,7 +27,7 @@ def snap_edges(
     Given a list of edges, snap any within `tolerance` pixels of one another
     to their positional average.
     """
-    by_orientation: Dict[str, T_obj_list] = {"v": [], "h": []}
+    by_orientation: dict[str, T_obj_list] = {"v": [], "h": []}
     for e in edges:
         by_orientation[e["orientation"]].append(e)
 
@@ -77,7 +77,7 @@ def merge_edges(
     merge a list of edges into a more "seamless" list.
     """
 
-    def get_group(edge: T_obj) -> Tuple[str, T_num]:
+    def get_group(edge: T_obj) -> tuple[str, T_num]:
         if edge["orientation"] == "h":
             return ("h", edge["top"])
         else:
@@ -166,7 +166,7 @@ def words_to_edges_v(
     bboxes = list(map(utils.objects_to_bbox, large_clusters))
 
     # Iterate through those bboxes, condensing overlapping bboxes
-    condensed_bboxes: List[T_bbox] = []
+    condensed_bboxes: list[T_bbox] = []
     for bbox in bboxes:
         overlap = any(utils.get_bbox_overlap(bbox, c) for c in condensed_bboxes)
         if not overlap:
@@ -262,9 +262,7 @@ def extend_h_edges(
                     nearest_right = vx
         new_x0 = min(h["x0"], nearest_left) if nearest_left is not None else h["x0"]
         new_x1 = max(h["x1"], nearest_right) if nearest_right is not None else h["x1"]
-        result.append(
-            {**h, "x0": new_x0, "x1": new_x1, "width": new_x1 - new_x0}
-        )
+        result.append({**h, "x0": new_x0, "x1": new_x1, "width": new_x1 - new_x0})
     return result
 
 
@@ -283,8 +281,7 @@ def extend_v_edges(
         nearest_below = None
         for h in h_edges:
             if not (
-                v["x0"] >= h["x0"] - x_tolerance
-                and v["x0"] <= h["x1"] + x_tolerance
+                v["x0"] >= h["x0"] - x_tolerance and v["x0"] <= h["x1"] + x_tolerance
             ):
                 continue
             hy = h["top"]
@@ -294,7 +291,9 @@ def extend_v_edges(
             if hy > v["bottom"]:
                 if nearest_below is None or hy < nearest_below:
                     nearest_below = hy
-        new_top = min(v["top"], nearest_above) if nearest_above is not None else v["top"]
+        new_top = (
+            min(v["top"], nearest_above) if nearest_above is not None else v["top"]
+        )
         new_bottom = (
             max(v["bottom"], nearest_below)
             if nearest_below is not None
@@ -358,7 +357,7 @@ def edges_to_intersections(
     return intersections
 
 
-def intersections_to_cells(intersections: T_intersections) -> List[T_bbox]:
+def intersections_to_cells(intersections: T_intersections) -> list[T_bbox]:
     """
     Given a list of points (`intersections`), return all rectangular "cells"
     that those points describe.
@@ -369,7 +368,7 @@ def intersections_to_cells(intersections: T_intersections) -> List[T_bbox]:
     """
 
     def edge_connects(p1: T_point, p2: T_point) -> bool:
-        def edges_to_set(edges: T_obj_list) -> Set[T_bbox]:
+        def edges_to_set(edges: T_obj_list) -> set[T_bbox]:
             return set(map(utils.obj_to_bbox, edges))
 
         if p1[0] == p2[0]:
@@ -390,7 +389,7 @@ def intersections_to_cells(intersections: T_intersections) -> List[T_bbox]:
     points = list(sorted(intersections.keys()))
     n_points = len(points)
 
-    def find_smallest_cell(points: List[T_point], i: int) -> Optional[T_bbox]:
+    def find_smallest_cell(points: list[T_point], i: int) -> T_bbox | None:
         if i == n_points - 1:
             return None
         pt = points[i]
@@ -413,7 +412,6 @@ def intersections_to_cells(intersections: T_intersections) -> List[T_bbox]:
                     and edge_connects(bottom_right, right_pt)
                     and edge_connects(bottom_right, below_pt)
                 ):
-
                     return (pt[0], pt[1], bottom_right[0], bottom_right[1])
         return None
 
@@ -421,13 +419,13 @@ def intersections_to_cells(intersections: T_intersections) -> List[T_bbox]:
     return list(filter(None, cell_gen))
 
 
-def cells_to_tables(cells: List[T_bbox]) -> List[List[T_bbox]]:
+def cells_to_tables(cells: list[T_bbox]) -> list[list[T_bbox]]:
     """
     Given a list of bounding boxes (`cells`), return a list of tables that
     hold those cells most simply (and contiguously).
     """
 
-    def bbox_to_corners(bbox: T_bbox) -> Tuple[T_point, T_point, T_point, T_point]:
+    def bbox_to_corners(bbox: T_bbox) -> tuple[T_point, T_point, T_point, T_point]:
         x0, top, x1, bottom = bbox
         return ((x0, top), (x0, bottom), (x1, top), (x1, bottom))
 
@@ -436,8 +434,8 @@ def cells_to_tables(cells: List[T_bbox]) -> List[List[T_bbox]]:
     # Iterate through the cells found above, and assign them
     # to contiguous tables
 
-    current_corners: Set[T_point] = set()
-    current_cells: List[T_bbox] = []
+    current_corners: set[T_point] = set()
+    current_cells: list[T_bbox] = []
 
     tables = []
     while len(remaining_cells):
@@ -482,8 +480,8 @@ def cells_to_tables(cells: List[T_bbox]) -> List[List[T_bbox]]:
     return filtered
 
 
-class CellGroup(object):
-    def __init__(self, cells: List[Optional[T_bbox]]):
+class CellGroup:
+    def __init__(self, cells: list[T_bbox | None]):
         self.cells = cells
         self.bbox = (
             min(map(itemgetter(0), filter(None, cells))),
@@ -501,8 +499,8 @@ class Column(CellGroup):
     pass
 
 
-class Table(object):
-    def __init__(self, page: "Page", cells: List[T_bbox]):
+class Table:
+    def __init__(self, page: "Page", cells: list[T_bbox]):
         self.page = page
         self.cells = cells
 
@@ -516,7 +514,7 @@ class Table(object):
             max(map(itemgetter(3), c)),
         )
 
-    def _get_rows_or_cols(self, kind: Type[CellGroup]) -> List[CellGroup]:
+    def _get_rows_or_cols(self, kind: type[CellGroup]) -> list[CellGroup]:
         axis = 0 if kind is Row else 1
         antiaxis = int(not axis)
 
@@ -538,14 +536,14 @@ class Table(object):
         return rows
 
     @property
-    def rows(self) -> List[CellGroup]:
+    def rows(self) -> list[CellGroup]:
         return self._get_rows_or_cols(Row)
 
     @property
-    def columns(self) -> List[CellGroup]:
+    def columns(self) -> list[CellGroup]:
         return self._get_rows_or_cols(Column)
 
-    def extract(self, **kwargs: Any) -> List[List[Optional[str]]]:
+    def extract(self, **kwargs: Any) -> list[list[str | None]]:
 
         chars = self.page.chars
         table_arr = []
@@ -613,8 +611,8 @@ UNSET = UnsetFloat(0)
 class TableSettings:
     vertical_strategy: str = "lines"
     horizontal_strategy: str = "lines"
-    explicit_vertical_lines: Optional[List[Union[T_obj, T_num]]] = None
-    explicit_horizontal_lines: Optional[List[Union[T_obj, T_num]]] = None
+    explicit_vertical_lines: list[T_obj | T_num] | None = None
+    explicit_horizontal_lines: list[T_obj | T_num] | None = None
     snap_tolerance: T_num = DEFAULT_SNAP_TOLERANCE
     snap_x_tolerance: T_num = UNSET
     snap_y_tolerance: T_num = UNSET
@@ -628,7 +626,7 @@ class TableSettings:
     intersection_tolerance: T_num = 3
     intersection_x_tolerance: T_num = UNSET
     intersection_y_tolerance: T_num = UNSET
-    text_settings: Optional[Dict[str, Any]] = None
+    text_settings: dict[str, Any] | None = None
 
     def __post_init__(self) -> None:
         """Clean up user-provided table settings.
@@ -655,7 +653,7 @@ class TableSettings:
             if strategy not in TABLE_STRATEGIES:
                 raise ValueError(
                     f"{orientation}_strategy must be one of"
-                    f'{{{",".join(TABLE_STRATEGIES)}}}'
+                    f"{{{','.join(TABLE_STRATEGIES)}}}"
                 )
 
         if self.text_settings is None:
@@ -682,7 +680,7 @@ class TableSettings:
                 setattr(self, attr, getattr(self, fallback))
 
     @classmethod
-    def resolve(cls, settings: Optional[T_table_settings]) -> "TableSettings":
+    def resolve(cls, settings: T_table_settings | None) -> "TableSettings":
         if settings is None:
             return cls()
         elif isinstance(settings, cls):
@@ -701,7 +699,7 @@ class TableSettings:
             raise ValueError(f"Cannot resolve settings: {settings}")
 
 
-class TableFinder(object):
+class TableFinder:
     """
     Given a PDF page, find plausible table structures.
 
@@ -712,7 +710,7 @@ class TableFinder(object):
     https://github.com/tabulapdf/tabula-extractor/issues/16
     """
 
-    def __init__(self, page: "Page", settings: Optional[T_table_settings] = None):
+    def __init__(self, page: "Page", settings: T_table_settings | None = None):
         self.page = page
         self.settings = TableSettings.resolve(settings)
         self.edges = self.get_edges()

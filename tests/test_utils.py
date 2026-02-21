@@ -243,7 +243,6 @@ class Test(unittest.TestCase):
     def test_extract_words_punctuation(self):
         path = os.path.join(HERE, "pdfs/test-punkt.pdf")
         with pdfplumber.open(path) as pdf:
-
             wordsA = pdf.pages[0].extract_words(split_at_punctuation=True)
             wordsB = pdf.pages[0].extract_words(split_at_punctuation=False)
             wordsC = pdf.pages[0].extract_words(

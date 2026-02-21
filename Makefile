@@ -1,38 +1,27 @@
-.PHONY: venv tests check-black check-flake lint format examples build
-VENV ?= .venv
-PYTHON = ${VENV}/bin/python
+.PHONY: sync tests lint format examples build
 
-venv:
-	python3 -m venv venv
-	${VENV}/bin/pip install --upgrade pip
-	${VENV}/bin/pip install -r requirements.txt
-	${VENV}/bin/pip install -r requirements-dev.txt
-	${VENV}/bin/pip install -e .
+sync:
+	uv sync --all-extras
 
 tests:
-	${PYTHON} -m pytest -n auto
-	${PYTHON} -m coverage html
+	uv run pytest -n auto
+	uv run coverage html
 
-check-black:
-	${VENV}/bin/black --check pdfplumber tests
-
-check-isort:
-	${VENV}/bin/isort --profile black --check-only pdfplumber tests
-
-check-flake:
-	${VENV}/bin/flake8 pdfplumber tests
+check-ruff:
+	uv run ruff check pdfplumber tests
+	uv run ruff format --check pdfplumber tests
 
 check-mypy:
-	${VENV}/bin/mypy --strict --implicit-reexport pdfplumber
+	uv run mypy pdfplumber
 
-lint: check-flake check-mypy check-black check-isort
+lint: check-ruff check-mypy
 
 format:
-	${VENV}/bin/black pdfplumber tests
-	${VENV}/bin/isort --profile black pdfplumber tests
+	uv run ruff format pdfplumber tests
+	uv run ruff check --fix pdfplumber tests
 
 examples:
-	${VENV}/bin/nbexec examples/notebooks
+	uv run nbexec examples/notebooks
 
 build:
-	${PYTHON} -m build
+	uv build

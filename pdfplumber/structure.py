@@ -2,20 +2,9 @@ import itertools
 import logging
 import re
 from collections import deque
+from collections.abc import Callable, Iterable, Iterator
 from dataclasses import asdict, dataclass, field
-from typing import (
-    TYPE_CHECKING,
-    Any,
-    Callable,
-    Dict,
-    Iterable,
-    Iterator,
-    List,
-    Optional,
-    Pattern,
-    Tuple,
-    Union,
-)
+from typing import TYPE_CHECKING, Any
 
 from pdfminer.data_structures import NumberTree
 from pdfminer.pdfparser import PDFParser
@@ -38,7 +27,7 @@ MatchFunc = Callable[["PDFStructElement"], bool]
 
 def _find_all(
     elements: Iterable["PDFStructElement"],
-    matcher: Union[str, Pattern[str], MatchFunc],
+    matcher: str | re.Pattern[str] | MatchFunc,
 ) -> Iterator["PDFStructElement"]:
     """
     Common code for `find_all()` in trees and elements.
@@ -70,10 +59,10 @@ class Findable:
     """find() and find_all() methods that can be inherited to avoid
     repeating oneself"""
 
-    children: List["PDFStructElement"]
+    children: list["PDFStructElement"]
 
     def find_all(
-        self, matcher: Union[str, Pattern[str], MatchFunc]
+        self, matcher: str | re.Pattern[str] | MatchFunc
     ) -> Iterator["PDFStructElement"]:
         """Iterate depth-first over matching elements in subtree.
 
@@ -84,8 +73,8 @@ class Findable:
         return _find_all(self.children, matcher)
 
     def find(
-        self, matcher: Union[str, Pattern[str], MatchFunc]
-    ) -> Optional["PDFStructElement"]:
+        self, matcher: str | re.Pattern[str] | MatchFunc
+    ) -> "PDFStructElement | None":
         """Find the first matching element in subtree.
 
         The `matcher` argument is either an element name, a regular
@@ -101,21 +90,21 @@ class Findable:
 @dataclass
 class PDFStructElement(Findable):
     type: str
-    revision: Optional[int]
-    id: Optional[str]
-    lang: Optional[str]
-    alt_text: Optional[str]
-    actual_text: Optional[str]
-    title: Optional[str]
-    page_number: Optional[int]
-    attributes: Dict[str, Any] = field(default_factory=dict)
-    mcids: List[int] = field(default_factory=list)
-    children: List["PDFStructElement"] = field(default_factory=list)
+    revision: int | None
+    id: str | None
+    lang: str | None
+    alt_text: str | None
+    actual_text: str | None
+    title: str | None
+    page_number: int | None
+    attributes: dict[str, Any] = field(default_factory=dict)
+    mcids: list[int] = field(default_factory=list)
+    children: list["PDFStructElement"] = field(default_factory=list)
 
     def __iter__(self) -> Iterator["PDFStructElement"]:
         return iter(self.children)
 
-    def all_mcids(self) -> Iterator[Tuple[Optional[int], int]]:
+    def all_mcids(self) -> Iterator[tuple[int | None, int]]:
         """Collect all MCIDs (with their page numbers, if there are
         multiple pages in the tree) inside a structure element.
         """
@@ -129,7 +118,7 @@ class PDFStructElement(Findable):
                 yield el.page_number, mcid
             d.extendleft(reversed(el.children))
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Return a compacted dict representation."""
         r = asdict(self)
         # Prune empty values (does not matter in which order)
@@ -166,16 +155,16 @@ class PDFStructTree(Findable):
 
     """
 
-    page: Optional["Page"]
+    page: "Page | None"
 
-    def __init__(self, doc: "PDF", page: Optional["Page"] = None):
+    def __init__(self, doc: "PDF", page: "Page | None" = None):
         self.doc = doc.doc
         if "StructTreeRoot" not in self.doc.catalog:
             raise StructTreeMissing("PDF has no structure")
         self.root = resolve1(self.doc.catalog["StructTreeRoot"])
         self.role_map = resolve1(self.root.get("RoleMap", {}))
         self.class_map = resolve1(self.root.get("ClassMap", {}))
-        self.children: List[PDFStructElement] = []
+        self.children: list[PDFStructElement] = []
 
         # If we have a specific page then we will work backwards from
         # its ParentTree - this is because structure elements could
@@ -215,8 +204,8 @@ class PDFStructTree(Findable):
             self._parse_struct_tree()
 
     def _make_attributes(
-        self, obj: Dict[str, Any], revision: Optional[int]
-    ) -> Dict[str, Any]:
+        self, obj: dict[str, Any], revision: int | None
+    ) -> dict[str, Any]:
         attr_obj_list = []
         for key in "C", "A":
             if key not in obj:
@@ -263,7 +252,7 @@ class PDFStructTree(Findable):
                     attr[k] = obj[k]
         return attr
 
-    def _make_element(self, obj: Any) -> Tuple[Optional[PDFStructElement], List[Any]]:
+    def _make_element(self, obj: Any) -> tuple[PDFStructElement | None, list[Any]]:
         # We hopefully caught these earlier
         assert "MCID" not in obj, "Uncaught MCR: %s" % obj
         assert "Obj" not in obj, "Uncaught OBJR: %s" % obj
@@ -305,7 +294,7 @@ class PDFStructTree(Findable):
         )
         return element, children
 
-    def _parse_parent_tree(self, parent_array: List[Any]) -> None:
+    def _parse_parent_tree(self, parent_array: list[Any]) -> None:
         """Populate the structure tree using the leaves of the parent tree for
         a given page."""
         # First walk backwards from the leaves to the root, tracking references
@@ -336,7 +325,7 @@ class PDFStructTree(Findable):
         assert found_root
         self._resolve_children(s)
 
-    def on_parsed_page(self, obj: Dict[str, Any]) -> bool:
+    def on_parsed_page(self, obj: dict[str, Any]) -> bool:
         if "Pg" not in obj:
             return True
         page_objid = obj["Pg"].objid
@@ -388,7 +377,7 @@ class PDFStructTree(Findable):
 
         # Traverse depth-first, removing empty elements (unsure how to
         # do this non-recursively)
-        def prune(elements: List[Any]) -> List[Any]:
+        def prune(elements: list[Any]) -> list[Any]:
             next_elements = []
             for ref in elements:
                 obj = resolve1(ref)
@@ -416,7 +405,7 @@ class PDFStructTree(Findable):
         prune(root)
         self._resolve_children(s)
 
-    def _resolve_children(self, seen: Dict[str, Any]) -> None:
+    def _resolve_children(self, seen: dict[str, Any]) -> None:
         """Resolve children starting from the tree root based on references we
         saw when traversing the structure tree.
         """
@@ -488,8 +477,7 @@ class PDFStructTree(Findable):
                     raise IndexError("Element no longer on page")
                 return geometry.obj_to_bbox(rects[0])
             else:
-                # Not sure why mypy complains here
-                return bbox  # type: ignore
+                return bbox
         else:
             mcid_objs = []
             for page_number, mcid in el.all_mcids():

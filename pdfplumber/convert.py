@@ -1,5 +1,6 @@
 import base64
-from typing import Any, Callable, Dict, List, Optional, Tuple
+from collections.abc import Callable
+from typing import Any
 
 from pdfminer.psparser import PSLiteral
 
@@ -31,8 +32,8 @@ CSV_COLS_TO_PREPEND = [
 
 
 def get_attr_filter(
-    include_attrs: Optional[List[str]] = None, exclude_attrs: Optional[List[str]] = None
-) -> Callable[[str], bool]:
+    include_attrs: list[str] | None = None, exclude_attrs: list[str] | None = None
+) -> "Callable[[str], bool]":
     if include_attrs is not None and exclude_attrs is not None:
         raise ValueError(
             "Cannot specify `include_attrs` and `exclude_attrs` at the same time."
@@ -62,9 +63,9 @@ def to_b64(data: bytes) -> str:
 class Serializer:
     def __init__(
         self,
-        precision: Optional[int] = None,
-        include_attrs: Optional[List[str]] = None,
-        exclude_attrs: Optional[List[str]] = None,
+        precision: int | None = None,
+        include_attrs: list[str] | None = None,
+        exclude_attrs: list[str] | None = None,
     ):
 
         self.precision = precision
@@ -97,25 +98,25 @@ class Serializer:
     def do_bool(self, x: bool) -> int:
         return int(x)
 
-    def do_list(self, obj: List[Any]) -> List[Any]:
+    def do_list(self, obj: list[Any]) -> list[Any]:
         return list(self.serialize(x) for x in obj)
 
-    def do_tuple(self, obj: Tuple[Any, ...]) -> Tuple[Any, ...]:
+    def do_tuple(self, obj: tuple[Any, ...]) -> tuple[Any, ...]:
         return tuple(self.serialize(x) for x in obj)
 
-    def do_dict(self, obj: Dict[str, Any]) -> Dict[str, Any]:
+    def do_dict(self, obj: dict[str, Any]) -> dict[str, Any]:
         if "object_type" in obj.keys():
             return {k: self.serialize(v) for k, v in obj.items() if self.attr_filter(k)}
         else:
             return {k: self.serialize(v) for k, v in obj.items()}
 
-    def do_PDFStream(self, obj: Any) -> Dict[str, Optional[str]]:
+    def do_PDFStream(self, obj: Any) -> dict[str, str | None]:
         return {"rawdata": to_b64(obj.rawdata) if obj.rawdata else None}
 
     def do_PSLiteral(self, obj: PSLiteral) -> str:
         return decode_text(obj.name)
 
-    def do_bytes(self, obj: bytes) -> Optional[str]:
+    def do_bytes(self, obj: bytes) -> str | None:
         for e in ENCODINGS_TO_TRY:
             try:
                 return obj.decode(e)

@@ -2,30 +2,30 @@ import csv
 import json
 from io import StringIO
 from itertools import chain
-from typing import Any, Dict, List, Optional, Set, TextIO
+from typing import Any, TextIO
 
 from . import utils
 from ._typing import T_obj, T_obj_list
 from .convert import CSV_COLS_REQUIRED, CSV_COLS_TO_PREPEND, Serializer
 
 
-class Container(object):
+class Container:
     cached_properties = ["_rect_edges", "_curve_edges", "_edges", "_objects"]
 
     @property
-    def pages(self) -> Optional[List[Any]]:  # pragma: nocover
+    def pages(self) -> list[Any] | None:  # pragma: nocover
         raise NotImplementedError
 
     @property
-    def objects(self) -> Dict[str, T_obj_list]:  # pragma: nocover
+    def objects(self) -> dict[str, T_obj_list]:  # pragma: nocover
         raise NotImplementedError
 
     def to_dict(
-        self, object_types: Optional[List[str]] = None
-    ) -> Dict[str, Any]:  # pragma: nocover
+        self, object_types: list[str] | None = None
+    ) -> dict[str, Any]:  # pragma: nocover
         raise NotImplementedError
 
-    def flush_cache(self, properties: Optional[List[str]] = None) -> None:
+    def flush_cache(self, properties: list[str] | None = None) -> None:
         props = self.cached_properties if properties is None else properties
         for p in props:
             if hasattr(self, p):
@@ -107,13 +107,13 @@ class Container(object):
 
     def to_json(
         self,
-        stream: Optional[TextIO] = None,
-        object_types: Optional[List[str]] = None,
-        include_attrs: Optional[List[str]] = None,
-        exclude_attrs: Optional[List[str]] = None,
-        precision: Optional[int] = None,
-        indent: Optional[int] = None,
-    ) -> Optional[str]:
+        stream: TextIO | None = None,
+        object_types: list[str] | None = None,
+        include_attrs: list[str] | None = None,
+        exclude_attrs: list[str] | None = None,
+        precision: int | None = None,
+        indent: int | None = None,
+    ) -> str | None:
 
         data = self.to_dict(object_types)
 
@@ -131,12 +131,12 @@ class Container(object):
 
     def to_csv(
         self,
-        stream: Optional[TextIO] = None,
-        object_types: Optional[List[str]] = None,
-        precision: Optional[int] = None,
-        include_attrs: Optional[List[str]] = None,
-        exclude_attrs: Optional[List[str]] = None,
-    ) -> Optional[str]:
+        stream: TextIO | None = None,
+        object_types: list[str] | None = None,
+        precision: int | None = None,
+        include_attrs: list[str] | None = None,
+        exclude_attrs: list[str] | None = None,
+    ) -> str | None:
         if stream is None:
             stream = StringIO()
             to_string = True
@@ -147,7 +147,7 @@ class Container(object):
             object_types = list(self.objects.keys()) + ["annot"]
 
         serialized = []
-        fields: Set[str] = set()
+        fields: set[str] = set()
 
         pages = [self] if self.pages is None else self.pages
 

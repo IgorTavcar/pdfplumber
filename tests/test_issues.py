@@ -58,14 +58,12 @@ class Test(unittest.TestCase):
             """
 
             for cl in checklines:
-
                 if (
                     checkbox["height"] > (RECT_HEIGHT - RECT_TOLERANCE)
                     and (checkbox["height"] < RECT_HEIGHT + RECT_TOLERANCE)
                     and (checkbox["width"] < RECT_WIDTH + RECT_TOLERANCE)
                     and (checkbox["width"] < RECT_WIDTH + RECT_TOLERANCE)
                 ):
-
                     xmatch = False
                     ymatch = False
 
@@ -333,8 +331,9 @@ class Test(unittest.TestCase):
             for _ in pdf.annots:
                 pass
 
-        with pdfplumber.open(path, raise_unicode_errors=False) as pdf, pytest.warns(
-            UserWarning
+        with (
+            pdfplumber.open(path, raise_unicode_errors=False) as pdf,
+            pytest.warns(UserWarning),
         ):
             for _ in pdf.annots:
                 pass

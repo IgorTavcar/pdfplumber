@@ -1,0 +1,73 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "pdfplumber"
+dynamic = ["version"]
+description = "Plumb a PDF for detailed information about each char, rectangle, and line."
+readme = "README.md"
+license = "MIT"
+requires-python = ">=3.10"
+authors = [
+    { name = "Jeremy Singer-Vine", email = "jsvine@gmail.com" },
+]
+classifiers = [
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
+]
+dependencies = [
+    "pdfminer.six==20260107",
+    "Pillow>=10.0",
+    "pypdfium2>=4.18.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "jupyterlab>=4.4.8",
+    "mypy>=1.14",
+    "nbexec==0.2.0",
+    "pandas-stubs>=2.2.2.240805",
+    "pandas>=2.2.2",
+    "pytest>=8.3",
+    "pytest-cov>=6.0",
+    "pytest-xdist>=3.8.0",
+    "ruff>=0.9",
+    "types-Pillow==10.2.0.20240520",
+]
+
+[project.scripts]
+pdfplumber = "pdfplumber.cli:main"
+
+[project.urls]
+Homepage = "https://github.com/jsvine/pdfplumber"
+
+[tool.hatch.version]
+path = "pdfplumber/_version.py"
+
+[tool.hatch.build.targets.sdist]
+include = [
+    "pdfplumber/",
+    "LICENSE.txt",
+    "README.md",
+]
+
+[tool.pytest.ini_options]
+addopts = "--cov=pdfplumber --cov-report xml:coverage.xml --cov-report term"
+
+[tool.mypy]
+strict = true
+implicit_reexport = true
+
+[tool.ruff]
+line-length = 88
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "W"]
+ignore = ["E203", "E501"]

@@ -1,9 +1,10 @@
 import itertools
 import logging
 import pathlib
+from collections.abc import Generator
 from io import BufferedReader, BytesIO
 from types import TracebackType
-from typing import Any, Dict, Generator, List, Literal, Optional, Tuple, Type, Union
+from typing import Any, Literal
 
 from pdfminer.layout import LAParams
 from pdfminer.pdfdocument import PDFDocument
@@ -23,18 +24,18 @@ logger = logging.getLogger(__name__)
 
 
 class PDF(Container):
-    cached_properties: List[str] = Container.cached_properties + ["_pages"]
+    cached_properties: list[str] = Container.cached_properties + ["_pages"]
 
     def __init__(
         self,
-        stream: Union[BufferedReader, BytesIO],
+        stream: BufferedReader | BytesIO,
         stream_is_external: bool = False,
-        path: Optional[pathlib.Path] = None,
-        pages: Optional[Union[List[int], Tuple[int]]] = None,
-        laparams: Optional[Dict[str, Any]] = None,
-        password: Optional[str] = None,
+        path: pathlib.Path | None = None,
+        pages: list[int] | tuple[int] | None = None,
+        laparams: dict[str, Any] | None = None,
+        password: str | None = None,
         strict_metadata: bool = False,
-        unicode_norm: Optional[Literal["NFC", "NFKC", "NFD", "NFKD"]] = None,
+        unicode_norm: Literal["NFC", "NFKC", "NFD", "NFKD"] | None = None,
         raise_unicode_errors: bool = True,
     ):
         self.stream = stream
@@ -72,19 +73,19 @@ class PDF(Container):
     @classmethod
     def open(
         cls,
-        path_or_fp: Union[str, pathlib.Path, BufferedReader, BytesIO],
-        pages: Optional[Union[List[int], Tuple[int]]] = None,
-        laparams: Optional[Dict[str, Any]] = None,
-        password: Optional[str] = None,
+        path_or_fp: str | pathlib.Path | BufferedReader | BytesIO,
+        pages: list[int] | tuple[int] | None = None,
+        laparams: dict[str, Any] | None = None,
+        password: str | None = None,
         strict_metadata: bool = False,
-        unicode_norm: Optional[Literal["NFC", "NFKC", "NFD", "NFKD"]] = None,
+        unicode_norm: Literal["NFC", "NFKC", "NFD", "NFKD"] | None = None,
         repair: bool = False,
-        gs_path: Optional[Union[str, pathlib.Path]] = None,
+        gs_path: str | pathlib.Path | None = None,
         repair_setting: T_repair_setting = "default",
         raise_unicode_errors: bool = True,
     ) -> "PDF":
 
-        stream: Union[BufferedReader, BytesIO]
+        stream: BufferedReader | BytesIO
 
         if repair:
             stream = _repair(
@@ -135,20 +136,20 @@ class PDF(Container):
 
     def __exit__(
         self,
-        t: Optional[Type[BaseException]],
-        value: Optional[BaseException],
-        traceback: Optional[TracebackType],
+        t: type[BaseException] | None,
+        value: BaseException | None,
+        traceback: TracebackType | None,
     ) -> None:
         self.close()
 
     @property
-    def pages(self) -> List[Page]:
+    def pages(self) -> list[Page]:
         if hasattr(self, "_pages"):
             return self._pages
 
         doctop: T_num = 0
         pp = self.pages_to_parse
-        self._pages: List[Page] = []
+        self._pages: list[Page] = []
 
         def iter_pages() -> Generator[PDFPage, None, None]:
             gen = PDFPage.create_pages(self.doc)
@@ -170,35 +171,35 @@ class PDF(Container):
         return self._pages
 
     @property
-    def objects(self) -> Dict[str, T_obj_list]:
+    def objects(self) -> dict[str, T_obj_list]:
         if hasattr(self, "_objects"):
             return self._objects
-        all_objects: Dict[str, T_obj_list] = {}
+        all_objects: dict[str, T_obj_list] = {}
         for p in self.pages:
             for kind in p.objects.keys():
                 all_objects[kind] = all_objects.get(kind, []) + p.objects[kind]
-        self._objects: Dict[str, T_obj_list] = all_objects
+        self._objects: dict[str, T_obj_list] = all_objects
         return self._objects
 
     @property
-    def annots(self) -> List[Dict[str, Any]]:
+    def annots(self) -> list[dict[str, Any]]:
         gen = (p.annots for p in self.pages)
         return list(itertools.chain(*gen))
 
     @property
-    def hyperlinks(self) -> List[Dict[str, Any]]:
+    def hyperlinks(self) -> list[dict[str, Any]]:
         gen = (p.hyperlinks for p in self.pages)
         return list(itertools.chain(*gen))
 
     @property
-    def structure_tree(self) -> List[Dict[str, Any]]:
+    def structure_tree(self) -> list[dict[str, Any]]:
         """Return the structure tree for the document."""
         try:
             return [elem.to_dict() for elem in PDFStructTree(self)]
         except StructTreeMissing:
             return []
 
-    def to_dict(self, object_types: Optional[List[str]] = None) -> Dict[str, Any]:
+    def to_dict(self, object_types: list[str] | None = None) -> dict[str, Any]:
         return {
             "metadata": self.metadata,
             "pages": [page.to_dict(object_types) for page in self.pages],
