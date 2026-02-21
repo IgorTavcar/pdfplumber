@@ -204,6 +204,133 @@ def words_to_edges_v(
     ]
 
 
+def _h_has_intersection(
+    h: T_obj, v_edges: T_obj_list, x_tolerance: T_num, y_tolerance: T_num
+) -> bool:
+    """Check if a horizontal edge already intersects with any vertical edge."""
+    for v in v_edges:
+        if (
+            v["top"] <= h["top"] + y_tolerance
+            and v["bottom"] >= h["top"] - y_tolerance
+            and v["x0"] >= h["x0"] - x_tolerance
+            and v["x0"] <= h["x1"] + x_tolerance
+        ):
+            return True
+    return False
+
+
+def _v_has_intersection(
+    v: T_obj, h_edges: T_obj_list, x_tolerance: T_num, y_tolerance: T_num
+) -> bool:
+    """Check if a vertical edge already intersects with any horizontal edge."""
+    for h in h_edges:
+        if (
+            v["top"] <= h["top"] + y_tolerance
+            and v["bottom"] >= h["top"] - y_tolerance
+            and v["x0"] >= h["x0"] - x_tolerance
+            and v["x0"] <= h["x1"] + x_tolerance
+        ):
+            return True
+    return False
+
+
+def extend_h_edges(
+    h_edges: T_obj_list, v_edges: T_obj_list, y_tolerance: T_num, x_tolerance: T_num
+) -> T_obj_list:
+    """Extend horizontal edges that have no existing intersections so they
+    reach the nearest vertically-overlapping vertical edge on each side.
+    Never shrinks an edge.  Edges already forming intersections are unchanged."""
+    result: T_obj_list = []
+    for h in h_edges:
+        if _h_has_intersection(h, v_edges, x_tolerance, y_tolerance):
+            result.append(h)
+            continue
+        nearest_left = None
+        nearest_right = None
+        for v in v_edges:
+            if not (
+                v["top"] <= h["top"] + y_tolerance
+                and v["bottom"] >= h["top"] - y_tolerance
+            ):
+                continue
+            vx = v["x0"]
+            if vx < h["x0"]:
+                if nearest_left is None or vx > nearest_left:
+                    nearest_left = vx
+            if vx > h["x1"]:
+                if nearest_right is None or vx < nearest_right:
+                    nearest_right = vx
+        new_x0 = min(h["x0"], nearest_left) if nearest_left is not None else h["x0"]
+        new_x1 = max(h["x1"], nearest_right) if nearest_right is not None else h["x1"]
+        result.append(
+            {**h, "x0": new_x0, "x1": new_x1, "width": new_x1 - new_x0}
+        )
+    return result
+
+
+def extend_v_edges(
+    v_edges: T_obj_list, h_edges: T_obj_list, x_tolerance: T_num, y_tolerance: T_num
+) -> T_obj_list:
+    """Extend vertical edges that have no existing intersections so they
+    reach the nearest horizontally-overlapping horizontal edge on each side.
+    Never shrinks an edge.  Edges already forming intersections are unchanged."""
+    result: T_obj_list = []
+    for v in v_edges:
+        if _v_has_intersection(v, h_edges, x_tolerance, y_tolerance):
+            result.append(v)
+            continue
+        nearest_above = None
+        nearest_below = None
+        for h in h_edges:
+            if not (
+                v["x0"] >= h["x0"] - x_tolerance
+                and v["x0"] <= h["x1"] + x_tolerance
+            ):
+                continue
+            hy = h["top"]
+            if hy < v["top"]:
+                if nearest_above is None or hy > nearest_above:
+                    nearest_above = hy
+            if hy > v["bottom"]:
+                if nearest_below is None or hy < nearest_below:
+                    nearest_below = hy
+        new_top = min(v["top"], nearest_above) if nearest_above is not None else v["top"]
+        new_bottom = (
+            max(v["bottom"], nearest_below)
+            if nearest_below is not None
+            else v["bottom"]
+        )
+        result.append(
+            {**v, "top": new_top, "bottom": new_bottom, "height": new_bottom - new_top}
+        )
+    return result
+
+
+def extend_edges(
+    edges: T_obj_list,
+    x_tolerance: T_num,
+    y_tolerance: T_num,
+    extend_h: bool = True,
+    extend_v: bool = True,
+) -> T_obj_list:
+    """Extend edges so they reach the nearest perpendicular edge just
+    outside their current span, enabling intersections for mixed-strategy
+    table detection.  No-op when all edges already intersect."""
+    v_edges = [e for e in edges if e["orientation"] == "v"]
+    h_edges = [e for e in edges if e["orientation"] == "h"]
+    result_h = (
+        extend_h_edges(h_edges, v_edges, y_tolerance, x_tolerance)
+        if extend_h
+        else h_edges
+    )
+    result_v = (
+        extend_v_edges(v_edges, h_edges, x_tolerance, y_tolerance)
+        if extend_v
+        else v_edges
+    )
+    return result_h + result_v
+
+
 def edges_to_intersections(
     edges: T_obj_list, x_tolerance: T_num = 1, y_tolerance: T_num = 1
 ) -> T_intersections:
@@ -589,6 +716,18 @@ class TableFinder(object):
         self.page = page
         self.settings = TableSettings.resolve(settings)
         self.edges = self.get_edges()
+        h_strat = self.settings.horizontal_strategy
+        v_strat = self.settings.vertical_strategy
+        extend_h = h_strat == "text" and v_strat != "text"
+        extend_v = v_strat == "text" and h_strat != "text"
+        if extend_h or extend_v:
+            self.edges = extend_edges(
+                self.edges,
+                self.settings.intersection_x_tolerance,
+                self.settings.intersection_y_tolerance,
+                extend_h=extend_h,
+                extend_v=extend_v,
+            )
         self.intersections = edges_to_intersections(
             self.edges,
             self.settings.intersection_x_tolerance,

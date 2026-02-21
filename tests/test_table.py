@@ -250,3 +250,119 @@ class Test(unittest.TestCase):
             assert t[-2][-2] == "Uncommon"
 
             assert len(page.extract_tables({"vertical_strategy": "lines_strict"})) == 0
+
+
+class TestExtendEdges(unittest.TestCase):
+    """Tests for extend_h_edges, extend_v_edges, and extend_edges."""
+
+    def _h_edge(self, x0, x1, top):
+        return {
+            "x0": x0,
+            "x1": x1,
+            "top": top,
+            "bottom": top,
+            "width": x1 - x0,
+            "height": 0,
+            "orientation": "h",
+        }
+
+    def _v_edge(self, x0, top, bottom):
+        return {
+            "x0": x0,
+            "x1": x0,
+            "top": top,
+            "bottom": bottom,
+            "width": 0,
+            "height": bottom - top,
+            "orientation": "v",
+        }
+
+    def test_extend_h_edges_basic(self):
+        # Horizontal edge that doesn't reach the vertical edges
+        h = [self._h_edge(20, 80, 50)]
+        v = [self._v_edge(10, 0, 100), self._v_edge(90, 0, 100)]
+        result = table.extend_h_edges(h, v, y_tolerance=1, x_tolerance=1)
+        assert len(result) == 1
+        assert result[0]["x0"] == 10
+        assert result[0]["x1"] == 90
+        assert result[0]["width"] == 80
+
+    def test_extend_v_edges_basic(self):
+        # Vertical edge that doesn't reach the horizontal edges
+        v = [self._v_edge(50, 20, 80)]
+        h = [self._h_edge(0, 100, 10), self._h_edge(0, 100, 90)]
+        result = table.extend_v_edges(v, h, x_tolerance=1, y_tolerance=1)
+        assert len(result) == 1
+        assert result[0]["top"] == 10
+        assert result[0]["bottom"] == 90
+        assert result[0]["height"] == 80
+
+    def test_no_shrinkage(self):
+        # Edge already extends beyond perpendicular edges — should not shrink
+        h = [self._h_edge(5, 95, 50)]
+        v = [self._v_edge(10, 0, 100), self._v_edge(90, 0, 100)]
+        result = table.extend_h_edges(h, v, y_tolerance=1, x_tolerance=1)
+        assert result[0]["x0"] == 5
+        assert result[0]["x1"] == 95
+
+    def test_noop_when_already_intersecting(self):
+        # Edges already span the full range — no change expected
+        h = [self._h_edge(10, 90, 50)]
+        v = [self._v_edge(10, 0, 100), self._v_edge(90, 0, 100)]
+        result = table.extend_h_edges(h, v, y_tolerance=1, x_tolerance=1)
+        assert result[0]["x0"] == 10
+        assert result[0]["x1"] == 90
+
+    def test_single_perpendicular_edge(self):
+        # Only one vertical edge — should still extend toward it
+        h = [self._h_edge(20, 80, 50)]
+        v = [self._v_edge(10, 0, 100)]
+        result = table.extend_h_edges(h, v, y_tolerance=1, x_tolerance=1)
+        assert result[0]["x0"] == 10
+        assert result[0]["x1"] == 80
+
+    def test_only_overlapping_edges_considered(self):
+        # Vertical edge outside y-range should be ignored
+        h = [self._h_edge(20, 80, 50)]
+        v_in = self._v_edge(10, 0, 100)  # overlaps y=50
+        v_out = self._v_edge(5, 200, 300)  # does not overlap y=50
+        result = table.extend_h_edges(h, [v_in, v_out], y_tolerance=1, x_tolerance=1)
+        assert result[0]["x0"] == 10
+        assert result[0]["x1"] == 80
+
+    def test_extend_edges_combined(self):
+        # Full round-trip through extend_edges
+        # v_edges span y=0-100, h_edges at y=10 and y=90 — all overlap
+        edges = [
+            self._h_edge(20, 80, 10),
+            self._h_edge(20, 80, 90),
+            self._v_edge(10, 0, 100),
+            self._v_edge(90, 0, 100),
+        ]
+        result = table.extend_edges(edges, x_tolerance=1, y_tolerance=1)
+        h_results = [e for e in result if e["orientation"] == "h"]
+        v_results = [e for e in result if e["orientation"] == "v"]
+        assert len(h_results) == 2
+        assert len(v_results) == 2
+        for h in h_results:
+            assert h["x0"] == 10
+            assert h["x1"] == 90
+        for v in v_results:
+            assert v["top"] == 0
+            assert v["bottom"] == 100
+
+    def test_extend_edges_empty(self):
+        assert table.extend_edges([], x_tolerance=1, y_tolerance=1) == []
+
+    def test_extends_only_to_nearest(self):
+        # Two v_edges outside h_edge reach on the right; should extend
+        # only to the nearest one
+        h = [self._h_edge(20, 80, 50)]
+        v = [
+            self._v_edge(10, 0, 100),  # left, unreachable
+            self._v_edge(90, 0, 100),  # right, unreachable (nearest)
+            self._v_edge(200, 0, 100),  # right, unreachable (farther)
+        ]
+        result = table.extend_h_edges(h, v, y_tolerance=1, x_tolerance=1)
+        assert result[0]["x0"] == 10
+        assert result[0]["x1"] == 90  # nearest right, not 200
