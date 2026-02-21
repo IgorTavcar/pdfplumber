@@ -8,7 +8,7 @@ dynamic = ["version"]
 description = "Plumb a PDF for detailed information about each char, rectangle, and line."
 readme = "README.md"
 license = "MIT"
-requires-python = ">=3.10"
+requires-python = ">=3.11"
 authors = [
     { name = "Jeremy Singer-Vine", email = "jsvine@gmail.com" },
 ]
@@ -16,11 +16,9 @@ classifiers = [
     "Intended Audience :: Developers",
     "License :: OSI Approved :: MIT License",
     "Operating System :: OS Independent",
-    "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
     "Programming Language :: Python :: 3.13",
-    "Programming Language :: Python :: 3.14",
 ]
 dependencies = [
     "pdfminer.six==20260107",

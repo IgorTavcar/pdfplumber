@@ -1,6 +1,6 @@
 import pathlib
 from io import BufferedReader, BytesIO
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, List, Optional, Tuple, Union
 
 import PIL.Image
 import PIL.ImageDraw
@@ -29,20 +29,20 @@ DEFAULT_STROKE = COLORS.RED + (200,)
 DEFAULT_STROKE_WIDTH = 1
 DEFAULT_RESOLUTION = 72
 
-T_color = tuple[int, int, int] | tuple[int, int, int, int] | str
-T_contains_points = tuple[T_point, ...] | list[T_point] | T_obj
+T_color = Union[Tuple[int, int, int], Tuple[int, int, int, int], str]
+T_contains_points = Union[Tuple[T_point, ...], List[T_point], T_obj]
 
 
 def get_page_image(
-    stream: BufferedReader | BytesIO,
-    path: pathlib.Path | None,
+    stream: Union[BufferedReader, BytesIO],
+    path: Optional[pathlib.Path],
     page_ix: int,
-    resolution: int | float,
-    password: str | None,
+    resolution: Union[int, float],
+    password: Optional[str],
     antialias: bool = False,
 ) -> PIL.Image.Image:
 
-    src: pathlib.Path | BufferedReader | BytesIO
+    src: Union[pathlib.Path, BufferedReader, BytesIO]
 
     # If we are working with a file object saved to disk
     if path:
@@ -78,8 +78,8 @@ class PageImage:
     def __init__(
         self,
         page: "Page",
-        original: PIL.Image.Image | None = None,
-        resolution: int | float = DEFAULT_RESOLUTION,
+        original: Optional[PIL.Image.Image] = None,
+        resolution: Union[int, float] = DEFAULT_RESOLUTION,
         antialias: bool = False,
         force_mediabox: bool = False,
     ):
@@ -127,13 +127,13 @@ class PageImage:
 
         self.reset()
 
-    def _reproject_bbox(self, bbox: T_bbox) -> tuple[int, int, int, int]:
+    def _reproject_bbox(self, bbox: T_bbox) -> Tuple[int, int, int, int]:
         x0, top, x1, bottom = bbox
         _x0, _top = self._reproject((x0, top))
         _x1, _bottom = self._reproject((x1, bottom))
         return (_x0, _top, _x1, _bottom)
 
-    def _reproject(self, coord: T_point) -> tuple[int, int]:
+    def _reproject(self, coord: T_point) -> Tuple[int, int]:
         """
         Given an (x0, top) tuple from the *root* coordinate system,
         return an (x0, top) tuple in the *image* coordinate system.
@@ -151,7 +151,7 @@ class PageImage:
 
     def save(
         self,
-        dest: str | pathlib.Path | BytesIO,
+        dest: Union[str, pathlib.Path, BytesIO],
         format: str = "PNG",
         quantize: bool = True,
         colors: int = 256,
@@ -201,7 +201,7 @@ class PageImage:
 
     def draw_lines(
         self,
-        list_of_lines: T_seq[T_contains_points] | "pd.DataFrame",
+        list_of_lines: Union[T_seq[T_contains_points], "pd.DataFrame"],
         stroke: T_color = DEFAULT_STROKE,
         stroke_width: int = DEFAULT_STROKE_WIDTH,
     ) -> "PageImage":
@@ -221,7 +221,7 @@ class PageImage:
 
     def draw_vlines(
         self,
-        locations: list[T_num] | "pd.Series[float]",
+        locations: Union[List[T_num], "pd.Series[float]"],
         stroke: T_color = DEFAULT_STROKE,
         stroke_width: int = DEFAULT_STROKE_WIDTH,
     ) -> "PageImage":
@@ -241,7 +241,7 @@ class PageImage:
 
     def draw_hlines(
         self,
-        locations: list[T_num] | "pd.Series[float]",
+        locations: Union[List[T_num], "pd.Series[float]"],
         stroke: T_color = DEFAULT_STROKE,
         stroke_width: int = DEFAULT_STROKE_WIDTH,
     ) -> "PageImage":
@@ -251,7 +251,7 @@ class PageImage:
 
     def draw_rect(
         self,
-        bbox_or_obj: T_bbox | T_obj,
+        bbox_or_obj: Union[T_bbox, T_obj],
         fill: T_color = DEFAULT_FILL,
         stroke: T_color = DEFAULT_STROKE,
         stroke_width: int = DEFAULT_STROKE_WIDTH,
@@ -284,7 +284,7 @@ class PageImage:
 
     def draw_rects(
         self,
-        list_of_rects: list[T_bbox] | T_obj_list | "pd.DataFrame",
+        list_of_rects: Union[List[T_bbox], T_obj_list, "pd.DataFrame"],
         fill: T_color = DEFAULT_FILL,
         stroke: T_color = DEFAULT_STROKE,
         stroke_width: int = DEFAULT_STROKE_WIDTH,
@@ -295,7 +295,7 @@ class PageImage:
 
     def draw_circle(
         self,
-        center_or_obj: T_point | T_obj,
+        center_or_obj: Union[T_point, T_obj],
         radius: int = 5,
         fill: T_color = DEFAULT_FILL,
         stroke: T_color = DEFAULT_STROKE,
@@ -312,7 +312,7 @@ class PageImage:
 
     def draw_circles(
         self,
-        list_of_circles: list[T_point] | T_obj_list | "pd.DataFrame",
+        list_of_circles: Union[List[T_point], T_obj_list, "pd.DataFrame"],
         radius: int = 5,
         fill: T_color = DEFAULT_FILL,
         stroke: T_color = DEFAULT_STROKE,
@@ -338,7 +338,7 @@ class PageImage:
 
     def debug_tablefinder(
         self,
-        table_settings: TableFinder | TableSettings | T_table_settings | None = None,
+        table_settings: Union[TableFinder, TableSettings, T_table_settings, None] = None,
     ) -> "PageImage":
         if isinstance(table_settings, TableFinder):
             finder = table_settings

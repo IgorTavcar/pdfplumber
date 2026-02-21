@@ -1,12 +1,12 @@
 import itertools
-from collections.abc import Iterable
 from operator import itemgetter
+from typing import Dict, Iterable, List, Optional, Union
 
 from .._typing import T_bbox, T_num, T_obj, T_obj_list
 from .clustering import cluster_objects
 
 
-def objects_to_rect(objects: Iterable[T_obj]) -> dict[str, T_num]:
+def objects_to_rect(objects: Iterable[T_obj]) -> Dict[str, T_num]:
     """
     Given an iterable of objects, return the smallest rectangle (i.e. a
     dict with "x0", "top", "x1", and "bottom" keys) that contains them
@@ -34,7 +34,7 @@ def obj_to_bbox(obj: T_obj) -> T_bbox:
     return bbox
 
 
-def bbox_to_rect(bbox: T_bbox) -> dict[str, T_num]:
+def bbox_to_rect(bbox: T_bbox) -> Dict[str, T_num]:
     """
     Return the rectangle (i.e a dict with keys "x0", "top", "x1",
     "bottom") for an object.
@@ -51,7 +51,7 @@ def merge_bboxes(bboxes: Iterable[T_bbox]) -> T_bbox:
     return (min(x0), min(top), max(x1), max(bottom))
 
 
-def get_bbox_overlap(a: T_bbox, b: T_bbox) -> T_bbox | None:
+def get_bbox_overlap(a: T_bbox, b: T_bbox) -> Optional[T_bbox]:
     a_left, a_top, a_right, a_bottom = a
     b_left, b_top, b_right, b_bottom = b
     o_left = max(a_left, b_left)
@@ -73,7 +73,7 @@ def calculate_area(bbox: T_bbox) -> T_num:
     return (right - left) * (bottom - top)
 
 
-def clip_obj(obj: T_obj, bbox: T_bbox) -> T_obj | None:
+def clip_obj(obj: T_obj, bbox: T_bbox) -> Optional[T_obj]:
     overlap = get_bbox_overlap(obj_to_bbox(obj), bbox)
     if overlap is None:
         return None
@@ -263,8 +263,8 @@ def obj_to_edges(obj: T_obj) -> T_obj_list:
 
 def filter_edges(
     edges: Iterable[T_obj],
-    orientation: str | None = None,
-    edge_type: str | None = None,
+    orientation: Optional[str] = None,
+    edge_type: Optional[str] = None,
     min_length: T_num = 1,
 ) -> T_obj_list:
     if orientation not in ("v", "h", None):

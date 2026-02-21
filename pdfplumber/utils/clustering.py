@@ -1,12 +1,12 @@
 import itertools
-from collections.abc import Callable, Hashable, Iterable
+from collections.abc import Hashable
 from operator import itemgetter
-from typing import Any, TypeVar, Union
+from typing import Any, Callable, Dict, Iterable, List, Tuple, TypeVar, Union
 
 from .._typing import T_num, T_obj
 
 
-def cluster_list(xs: list[T_num], tolerance: T_num = 0) -> list[list[T_num]]:
+def cluster_list(xs: List[T_num], tolerance: T_num = 0) -> List[List[T_num]]:
     if tolerance == 0:
         return [[x] for x in sorted(xs)]
     if len(xs) < 2:
@@ -26,7 +26,7 @@ def cluster_list(xs: list[T_num], tolerance: T_num = 0) -> list[list[T_num]]:
     return groups
 
 
-def make_cluster_dict(values: Iterable[T_num], tolerance: T_num) -> dict[T_num, int]:
+def make_cluster_dict(values: Iterable[T_num], tolerance: T_num) -> Dict[T_num, int]:
     clusters = cluster_list(list(set(values)), tolerance)
 
     nested_tuples = [
@@ -36,15 +36,15 @@ def make_cluster_dict(values: Iterable[T_num], tolerance: T_num) -> dict[T_num, 
     return dict(itertools.chain(*nested_tuples))
 
 
-Clusterable = TypeVar("Clusterable", T_obj, tuple[Any, ...])
+Clusterable = TypeVar("Clusterable", T_obj, Tuple[Any, ...])
 
 
 def cluster_objects(
-    xs: list[Clusterable],
+    xs: List[Clusterable],
     key_fn: Union[Hashable, Callable[[Clusterable], T_num]],
     tolerance: T_num,
     preserve_order: bool = False,
-) -> list[list[Clusterable]]:
+) -> List[List[Clusterable]]:
 
     if not callable(key_fn):
         key_fn = itemgetter(key_fn)

@@ -1,4 +1,4 @@
-from typing import Any
+from typing import Any, List, Optional, Union
 
 from pdfminer.pdftypes import PDFObjRef
 from pdfminer.psparser import PSLiteral
@@ -7,7 +7,7 @@ from pdfminer.utils import PDFDocEncoding
 from .exceptions import MalformedPDFException
 
 
-def decode_text(s: bytes | str) -> str:
+def decode_text(s: Union[bytes, str]) -> str:
     """
     Decodes a PDFDocEncoding string to Unicode.
     Adds py3 compatibility to pdfminer's version.
@@ -39,7 +39,7 @@ def resolve_and_decode(obj: Any) -> Any:
     return obj
 
 
-def decode_psl_list(_list: list[PSLiteral | str]) -> list[str]:
+def decode_psl_list(_list: List[Union[PSLiteral, str]]) -> List[str]:
     return [
         decode_text(value.name) if isinstance(value, PSLiteral) else value
         for value in _list
@@ -53,7 +53,7 @@ def resolve(x: Any) -> Any:
         return x
 
 
-def get_dict_type(d: Any) -> str | None:
+def get_dict_type(d: Any) -> Optional[str]:
     if not isinstance(d, dict):
         return None
     t = d.get("Type")
