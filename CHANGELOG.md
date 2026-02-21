@@ -4,7 +4,24 @@ All notable changes to this project will be documented in this file. The format 
 
 ## Unreleased
 
+## [0.12.0] — 2026-02-21
+
+### Changed
+- Migrate build system from setuptools to hatchling + uv. ([832693f](https://github.com/jsvine/pdfplumber/commit/832693f))
+- Replace black, flake8, and isort with ruff. ([832693f](https://github.com/jsvine/pdfplumber/commit/832693f))
+- Modernize all type hints to Python 3.10+ syntax (PEP 604/585). ([832693f](https://github.com/jsvine/pdfplumber/commit/832693f))
+- Bump `requires-python` to `>=3.10`. ([832693f](https://github.com/jsvine/pdfplumber/commit/832693f))
+- Bump `Pillow` minimum from `>=9.1` to `>=10.0`. ([832693f](https://github.com/jsvine/pdfplumber/commit/832693f))
+- Update CI to use `astral-sh/setup-uv`, `uv sync`, and `uv build`. ([832693f](https://github.com/jsvine/pdfplumber/commit/832693f))
 - Upgrade `pdfminer.six` from `20251230` to `20260107`. ([07a5ff6](https://github.com/jsvine/pdfplumber/commit/07a5ff6))
+
+### Fixed
+- Fix `cli.py` module-level `sys.argv` mutation at import time. ([832693f](https://github.com/jsvine/pdfplumber/commit/832693f))
+
+### Removed
+- Drop support for Python 3.8 and 3.9. ([832693f](https://github.com/jsvine/pdfplumber/commit/832693f))
+- Remove legacy build files (`setup.py`, `setup.cfg`, `MANIFEST.in`, `requirements.txt`, `requirements-dev.txt`). ([832693f](https://github.com/jsvine/pdfplumber/commit/832693f))
+- Remove dev dependencies: black, flake8, isort, py, setuptools. ([832693f](https://github.com/jsvine/pdfplumber/commit/832693f))
 
 ## 0.11.9 — 2026-01-05
 
